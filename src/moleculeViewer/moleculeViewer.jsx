@@ -9,6 +9,8 @@ const CPK_COLORS = {
   default: '#B0B0B0'
 };
 
+
+
 const MoleculeViewer = ({ molecules }) => {
   const containerRef = useRef();
   const labelContainerRef = useRef();
@@ -16,7 +18,15 @@ const MoleculeViewer = ({ molecules }) => {
   const elementColorRef = useRef();
   const bondLabelRef = useRef();
 
+  const allMeshesRef = useRef([]);
+
   const [scene, setScene] = useState(new THREE.Scene());
+
+  const [areLabelsVisible, setLabelsVisible] = useState(true);
+
+  const toggleLabels = () => {
+  setLabelsVisible(!areLabelsVisible);
+  };
 
   useEffect(() => {
     let camera, renderer, labelRenderer, controls, labelControls;
@@ -24,7 +34,8 @@ const MoleculeViewer = ({ molecules }) => {
     let previouslySelectedUI = null;
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    const allMeshes = [];
+
+    allMeshesRef.current = [];
 
     init();
     animate();
@@ -67,7 +78,7 @@ const MoleculeViewer = ({ molecules }) => {
       molecules.forEach(molecule => {
         const sceneData = { scene };
         const meshInfo = renderSingleMolecule(molecule, sceneData);
-        allMeshes.push(meshInfo);
+        allMeshesRef.current.push(meshInfo);
       });
 
       renderer.domElement.addEventListener('dblclick', onAtomDoubleClick);
@@ -294,7 +305,7 @@ const MoleculeViewer = ({ molecules }) => {
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
 
-      allMeshes.forEach(({ atomMeshes, bondMeshes, labels }) => {
+      allMeshesRef.current.forEach(({ atomMeshes, bondMeshes, labels }) => {
         atomMeshes.forEach((mesh, i) => labels[i].position.copy(mesh.position));
         bondMeshes.forEach((mesh, j) => labels[j + atomMeshes.length].position.copy(mesh.position));
       });
@@ -305,9 +316,23 @@ const MoleculeViewer = ({ molecules }) => {
     };
   }, [molecules]);
 
+  useEffect(() => {
+    if (!scene) return;
+  
+    allMeshesRef.current.forEach(({ labels }) => {
+      labels.forEach(label => {
+        if (areLabelsVisible) {
+          scene.add(label);
+        } else {
+          scene.remove(label);
+        }
+      });
+    });
+  }, [areLabelsVisible, scene]);
+
   return (
     <div>
-      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         <div id="ui-panels" style={{
             display: 'flex',
             flexDirection: 'row',
@@ -347,6 +372,9 @@ const MoleculeViewer = ({ molecules }) => {
         </div>
       </div>
       <div style={{ margin: 'auto' }}>
+        <button onClick={toggleLabels} style={{ marginBottom: '10px' }}>
+          {areLabelsVisible ? 'Hide Labels' : 'Show Labels'}
+        </button>
         <div ref={labelContainerRef} style={{position: 'absolute'}} />
         <div
           id="viewer"

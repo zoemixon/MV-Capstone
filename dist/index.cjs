@@ -783,14 +783,19 @@ const MoleculeViewer = ({ molecules }) => {
   const atomLabelRef = react.useRef();
   const elementColorRef = react.useRef();
   const bondLabelRef = react.useRef();
+  const allMeshesRef = react.useRef([]);
   const [scene, setScene] = react.useState(new THREE__namespace.Scene());
+  const [areLabelsVisible, setLabelsVisible] = react.useState(true);
+  const toggleLabels = () => {
+    setLabelsVisible(!areLabelsVisible);
+  };
   react.useEffect(() => {
     let camera, renderer, labelRenderer, controls, labelControls;
     let previouslySelectedAtom = null;
     let previouslySelectedUI = null;
     const raycaster = new THREE__namespace.Raycaster();
     const mouse = new THREE__namespace.Vector2();
-    const allMeshes = [];
+    allMeshesRef.current = [];
     init();
     animate();
     function init() {
@@ -822,7 +827,7 @@ const MoleculeViewer = ({ molecules }) => {
       molecules.forEach((molecule) => {
         const sceneData = { scene };
         const meshInfo = renderSingleMolecule(molecule, sceneData);
-        allMeshes.push(meshInfo);
+        allMeshesRef.current.push(meshInfo);
       });
       renderer.domElement.addEventListener("dblclick", onAtomDoubleClick);
     }
@@ -1010,7 +1015,7 @@ const MoleculeViewer = ({ molecules }) => {
       labelControls.update();
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
-      allMeshes.forEach(({ atomMeshes, bondMeshes, labels }) => {
+      allMeshesRef.current.forEach(({ atomMeshes, bondMeshes, labels }) => {
         atomMeshes.forEach((mesh, i) => labels[i].position.copy(mesh.position));
         bondMeshes.forEach((mesh, j) => labels[j + atomMeshes.length].position.copy(mesh.position));
       });
@@ -1019,6 +1024,18 @@ const MoleculeViewer = ({ molecules }) => {
       renderer.domElement.removeEventListener("dblclick", onAtomDoubleClick);
     };
   }, [molecules]);
+  react.useEffect(() => {
+    if (!scene) return;
+    allMeshesRef.current.forEach(({ labels }) => {
+      labels.forEach((label) => {
+        if (areLabelsVisible) {
+          scene.add(label);
+        } else {
+          scene.remove(label);
+        }
+      });
+    });
+  }, [areLabelsVisible, scene]);
   return /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
     /* @__PURE__ */ jsxRuntime.jsx("div", { style: { position: "relative", width: "100%", height: "100%" }, children: /* @__PURE__ */ jsxRuntime.jsxs(
       "div",
@@ -1064,6 +1081,7 @@ const MoleculeViewer = ({ molecules }) => {
       }
     ) }),
     /* @__PURE__ */ jsxRuntime.jsxs("div", { style: { margin: "auto" }, children: [
+      /* @__PURE__ */ jsxRuntime.jsx("button", { onClick: toggleLabels, style: { marginBottom: "10px" }, children: areLabelsVisible ? "Hide Labels" : "Show Labels" }),
       /* @__PURE__ */ jsxRuntime.jsx("div", { ref: labelContainerRef, style: { position: "absolute" } }),
       /* @__PURE__ */ jsxRuntime.jsx(
         "div",
