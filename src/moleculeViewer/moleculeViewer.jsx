@@ -80,15 +80,15 @@ const MoleculeViewer = ({ molecules }) => {
       const defaultRadius = 0.3;
 
       const atomSection = document.createElement('div');
-      atomSection.innerHTML = `<h4>${name} Atoms</h4>`;
+      atomSection.innerHTML = `<h4>Atoms</h4>`;
       atomLabelRef.current.appendChild(atomSection);
 
       const elementSection = document.createElement('div');
-      elementSection.innerHTML = `<h4>${name} Elements</h4>`;
+      elementSection.innerHTML = `<h4>Elements</h4>`;
       elementColorRef.current.appendChild(elementSection);
 
       const bondSection = document.createElement('div');
-      bondSection.innerHTML = `<h4>${name} Bonds</h4>`;
+      bondSection.innerHTML = `<h4>Bonds</h4>`;
       bondLabelRef.current.appendChild(bondSection);
 
       atoms.forEach((atom, index) => {
