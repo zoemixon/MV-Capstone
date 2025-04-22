@@ -1071,7 +1071,7 @@ const MoleculeViewer = ({ molecules }) => {
           id: "viewer",
           ref: containerRef,
           style: {
-            width: "1000px",
+            width: "1100px",
             height: "600px",
             border: "1px solid #ddd",
             position: "relative"
