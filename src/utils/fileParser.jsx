@@ -5,7 +5,7 @@ import { parseXyz } from './xyzParser';
 // import { parseCub } from './cubParser';
 import { renderDensityCloud } from './cubView';
 
-const FileUploader = ({ file, onParsed }) => {
+const FileParser = ({ file, onParsed }) => {
   useEffect(() => {
     if (!file) return;
 
@@ -56,4 +56,4 @@ const FileUploader = ({ file, onParsed }) => {
   return null;
 };
 
-export default FileUploader;
+export default FileParser;

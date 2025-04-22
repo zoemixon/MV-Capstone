@@ -1146,7 +1146,7 @@ function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 
   scene.add(cloud);
   window.densityCloud = cloud;
 }
-const FileUploader = ({ file, onParsed }) => {
+const FileParser = ({ file, onParsed }) => {
   useEffect(() => {
     if (!file) return;
     const reader = new FileReader();
@@ -1207,7 +1207,7 @@ const UploadButton = ({ setFile }) => {
   ) });
 };
 export {
-  FileUploader,
+  FileParser,
   MoleculeViewer,
   UploadButton
 };
