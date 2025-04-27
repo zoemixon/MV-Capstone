@@ -9,8 +9,6 @@ const CPK_COLORS = {
   default: '#B0B0B0'
 };
 
-
-
 const MoleculeViewer = ({ molecules }) => {
   const containerRef = useRef();
   const labelContainerRef = useRef();
@@ -25,7 +23,7 @@ const MoleculeViewer = ({ molecules }) => {
   const [areLabelsVisible, setLabelsVisible] = useState(true);
 
   const toggleLabels = () => {
-  setLabelsVisible(!areLabelsVisible);
+    setLabelsVisible(!areLabelsVisible);
   };
 
   useEffect(() => {
@@ -41,7 +39,6 @@ const MoleculeViewer = ({ molecules }) => {
     animate();
 
     function init() {
-      // scene = new THREE.Scene();
       scene.clear();
 
       const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft ambient light
@@ -73,7 +70,6 @@ const MoleculeViewer = ({ molecules }) => {
       controls.enableDamping = true;
       labelControls = new OrbitControls(camera, labelRenderer.domElement);
       labelControls.enableDamping = true;
-
 
       molecules.forEach(molecule => {
         const sceneData = { scene };
@@ -121,12 +117,16 @@ const MoleculeViewer = ({ molecules }) => {
         sceneData.scene.add(label);
 
         const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.gap = '4px';
         wrapper.dataset.atomIndex = index;
         wrapper.innerHTML = `<strong>Atom ${index + 1} (${atom.elem}): </strong>`;
 
         const labelInput = document.createElement('input');
         labelInput.type = 'text';
         labelInput.value = atom.elem;
+        labelInput.className = 'atom-table-input';
         labelInput.oninput = () => label.element.textContent = labelInput.value;
         wrapper.appendChild(labelInput);
 
@@ -135,6 +135,7 @@ const MoleculeViewer = ({ molecules }) => {
         atomRadiusInput.step = '0.05';
         atomRadiusInput.min = '0.01';
         atomRadiusInput.value = radius;
+        atomRadiusInput.className = 'atom-table-input';
         atomRadiusInput.oninput = () => {
           const newRadius = parseFloat(atomRadiusInput.value);
           sphere.geometry.dispose();
@@ -150,12 +151,16 @@ const MoleculeViewer = ({ molecules }) => {
       uniqueElements.forEach(elem => {
         const color = CPK_COLORS[elem] || CPK_COLORS.default;
         const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.gap = '4px';
         const lbl = document.createElement('label');
         lbl.textContent = `${elem}: `;
 
         const colorInput = document.createElement('input');
         colorInput.type = 'color';
         colorInput.value = color;
+        colorInput.className = 'element-table-input';
         colorInput.oninput = () => {
           atomMeshes.forEach((mesh, i) => {
             if (atoms[i].elem === elem) {
@@ -169,6 +174,7 @@ const MoleculeViewer = ({ molecules }) => {
         radiusInput.step = '0.05';
         radiusInput.min = '0.01';
         radiusInput.value = atomicRadii[elem] || defaultRadius;
+        radiusInput.className = 'element-table-input';
         radiusInput.oninput = () => {
           const newRadius = parseFloat(radiusInput.value);
           atomMeshes.forEach((mesh, i) => {
@@ -211,10 +217,14 @@ const MoleculeViewer = ({ molecules }) => {
         sceneData.scene.add(bondLabel);
 
         const wrapper = document.createElement('div');
+        wrapper.style.display = 'flex';
+        wrapper.style.alignItems = 'center';
+        wrapper.style.gap = '4px';
         wrapper.innerHTML = `<strong>Bond ${index + 1}:</strong>`;
         const bondInput = document.createElement('input');
         bondInput.type = 'text';
         bondInput.value = `B${index + 1}`;
+        bondInput.className = 'bond-table-input';
         bondInput.oninput = () => bondLabel.element.textContent = bondInput.value;
         wrapper.appendChild(bondInput);
         bondSection.appendChild(wrapper);
@@ -318,7 +328,7 @@ const MoleculeViewer = ({ molecules }) => {
 
   useEffect(() => {
     if (!scene) return;
-  
+
     allMeshesRef.current.forEach(({ labels }) => {
       labels.forEach(label => {
         if (areLabelsVisible) {
@@ -332,7 +342,17 @@ const MoleculeViewer = ({ molecules }) => {
 
   return (
     <div>
-        <div style={{ position: 'relative', width: '100%', height: '100%' }}>
+      <style>{`
+        .selected-atom {
+          background-color: yellow !important;
+        }
+        .atom-table-input, .element-table-input, .bond-table-input {
+          width: 60px;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+      `}</style>
+      <div style={{ position: 'relative', width: '100%', height: '100%' }}>
         <div id="ui-panels" style={{
             display: 'flex',
             flexDirection: 'row',
@@ -379,7 +399,6 @@ const MoleculeViewer = ({ molecules }) => {
         <div
           id="viewer"
           ref={containerRef}
-          // style={{ position: 'relative', width: '100%', height: '100%' }}
           style={{
             width: '1100px',
             height: '600px',
