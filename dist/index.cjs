@@ -777,22 +777,35 @@ const CPK_COLORS = {
   F: "#90E050",
   default: "#B0B0B0"
 };
-const MoleculeViewer = ({ molecules }) => {
+const MoleculeViewer = ({ molecules, onDeleteMolecule }) => {
   const containerRef = react.useRef();
   const labelContainerRef = react.useRef();
   const atomLabelRef = react.useRef();
   const elementColorRef = react.useRef();
   const bondLabelRef = react.useRef();
   const allMeshesRef = react.useRef([]);
+  const previouslySelectedAtomRef = react.useRef(null);
+  const previouslySelectedUIRef = react.useRef(null);
   const [scene, setScene] = react.useState(new THREE__namespace.Scene());
+  const [selected, setSelected] = react.useState({ moleculeIdx: null, atomIdx: null });
   const [areLabelsVisible, setLabelsVisible] = react.useState(true);
   const toggleLabels = () => {
     setLabelsVisible(!areLabelsVisible);
   };
+  const cleanupSceneAndPanels = () => {
+    if (scene) {
+      while (scene.children.length > 0) {
+        scene.remove(scene.children[0]);
+      }
+    }
+    allMeshesRef.current = [];
+    if (atomLabelRef.current) atomLabelRef.current.innerHTML = "";
+    if (elementColorRef.current) elementColorRef.current.innerHTML = "";
+    if (bondLabelRef.current) bondLabelRef.current.innerHTML = "";
+  };
   react.useEffect(() => {
+    cleanupSceneAndPanels();
     let camera, renderer, labelRenderer, controls, labelControls;
-    let previouslySelectedAtom = null;
-    let previouslySelectedUI = null;
     const raycaster = new THREE__namespace.Raycaster();
     const mouse = new THREE__namespace.Vector2();
     allMeshesRef.current = [];
@@ -824,14 +837,14 @@ const MoleculeViewer = ({ molecules }) => {
       controls.enableDamping = true;
       labelControls = new OrbitControls(camera, labelRenderer.domElement);
       labelControls.enableDamping = true;
-      molecules.forEach((molecule) => {
+      molecules.forEach((molecule, idx) => {
         const sceneData = { scene };
-        const meshInfo = renderSingleMolecule(molecule, sceneData);
+        const meshInfo = renderSingleMolecule(molecule, sceneData, idx);
         allMeshesRef.current.push(meshInfo);
       });
       renderer.domElement.addEventListener("dblclick", onAtomDoubleClick);
     }
-    function renderSingleMolecule(molecule, sceneData) {
+    function renderSingleMolecule(molecule, sceneData, moleculeIdx) {
       const { atoms, bonds, name } = molecule;
       const labels = [], atomMeshes = [], bondMeshes = [];
       const atomicRadii = { H: 0.2, C: 0.4, N: 0.35, O: 0.35 };
@@ -863,6 +876,7 @@ const MoleculeViewer = ({ molecules }) => {
         wrapper.style.display = "flex";
         wrapper.style.alignItems = "center";
         wrapper.style.gap = "4px";
+        wrapper.dataset.moleculeIdx = moleculeIdx;
         wrapper.dataset.atomIndex = index;
         wrapper.innerHTML = `<strong>Atom ${index + 1} (${atom.elem}): </strong>`;
         const labelInput = document.createElement("input");
@@ -983,22 +997,30 @@ const MoleculeViewer = ({ molecules }) => {
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
-      const atomHit = intersects.find(
-        (hit) => hit.object.geometry instanceof THREE__namespace.SphereGeometry && hit.object.userData.isAtom
-      );
-      if (atomHit) {
-        if (previouslySelectedAtom) previouslySelectedAtom.material.emissive.set(0);
-        if (previouslySelectedUI) previouslySelectedUI.classList.remove("selected-atom");
-        const selectedAtom = atomHit.object;
-        selectedAtom.material.emissive = new THREE__namespace.Color(16776960);
-        selectedAtom.material.emissiveIntensity = 0.8;
-        const atomIndex = selectedAtom.userData.atomIndex;
-        const uiElement = atomLabelRef.current.querySelector(`[data-atom-index="${atomIndex}"]`);
-        if (uiElement) uiElement.classList.add("selected-atom");
-        previouslySelectedAtom = selectedAtom;
-        previouslySelectedUI = uiElement;
-        focusOnAtom(selectedAtom);
-      }
+      let found = false;
+      allMeshesRef.current.forEach((meshInfo, molIdx) => {
+        meshInfo.atomMeshes.forEach((atomMesh, atomIdx) => {
+          if (!found && intersects.find((hit) => hit.object === atomMesh)) {
+            if (previouslySelectedAtomRef.current) {
+              previouslySelectedAtomRef.current.material.emissive.set(0);
+            }
+            if (previouslySelectedUIRef.current) {
+              previouslySelectedUIRef.current.classList.remove("selected-atom");
+            }
+            atomMesh.material.emissive = new THREE__namespace.Color(16776960);
+            atomMesh.material.emissiveIntensity = 0.8;
+            previouslySelectedAtomRef.current = atomMesh;
+            const uiElement = atomLabelRef.current.querySelector(`[data-molecule-idx='${molIdx}'][data-atom-index='${atomIdx}']`);
+            if (uiElement) {
+              uiElement.classList.add("selected-atom");
+              previouslySelectedUIRef.current = uiElement;
+            }
+            setSelected({ moleculeIdx: molIdx, atomIdx });
+            focusOnAtom(atomMesh);
+            found = true;
+          }
+        });
+      });
     }
     function focusOnAtom(atomMesh) {
       const targetPosition = atomMesh.position.clone();
@@ -1056,12 +1078,47 @@ const MoleculeViewer = ({ molecules }) => {
           background-color: yellow !important;
         }
         .atom-table-input, .element-table-input, .bond-table-input {
-          width: 60px;
-          max-width: 100%;
+          width: 90px;
+          min-width: 60px;
+          max-width: 120px;
           box-sizing: border-box;
+          margin-right: 6px;
+        }
+        .molecule-list-panel {
+          border: 1px solid #ccc;
+          padding: 8px;
+          max-height: 220px;
+          min-width: 180px;
+          overflow-y: auto;
+          margin-right: 12px;
+          background: #fafbfc;
+        }
+        .molecule-list-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          margin-bottom: 6px;
+        }
+        .delete-molecule-btn {
+          background: #ff4d4f;
+          color: #fff;
+          border: none;
+          border-radius: 3px;
+          padding: 2px 10px;
+          cursor: pointer;
+          font-size: 13px;
+        }
+        .side-panel {
+          border: 1px solid #ccc;
+          padding: 8px;
+          max-height: 220px;
+          min-width: 180px;
+          overflow-y: auto;
+          margin-right: 12px;
+          background: #fff;
         }
       ` }),
-    /* @__PURE__ */ jsxRuntime.jsx("div", { style: { position: "relative", width: "100%", height: "100%" }, children: /* @__PURE__ */ jsxRuntime.jsxs(
+    /* @__PURE__ */ jsxRuntime.jsx("div", { style: { position: "relative", width: "100%", height: "100%" }, children: molecules && molecules.length > 0 && /* @__PURE__ */ jsxRuntime.jsxs(
       "div",
       {
         id: "ui-panels",
@@ -1074,33 +1131,24 @@ const MoleculeViewer = ({ molecules }) => {
           zIndex: 10
         },
         children: [
-          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "elementColors", ref: elementColorRef, style: {
-            pointerEvents: "auto",
-            padding: "8px",
-            maxHeight: "200px",
-            overflowY: "auto",
-            overflowX: "hidden",
-            border: "1px solid #ccc",
-            marginRight: "8px"
-          } }),
-          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "bondLabels", ref: bondLabelRef, style: {
-            pointerEvents: "auto",
-            padding: "8px",
-            maxHeight: "200px",
-            overflowY: "auto",
-            overflowX: "hidden",
-            border: "1px solid #ccc",
-            marginRight: "8px"
-          } }),
-          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "atomLabels", ref: atomLabelRef, style: {
-            pointerEvents: "auto",
-            padding: "8px",
-            maxHeight: "200px",
-            overflowY: "auto",
-            overflowX: "hidden",
-            border: "1px solid #ccc",
-            marginRight: "8px"
-          } })
+          /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "molecule-list-panel", children: [
+            /* @__PURE__ */ jsxRuntime.jsx("h4", { children: "Molecules" }),
+            molecules.map((mol, idx) => /* @__PURE__ */ jsxRuntime.jsxs("div", { className: "molecule-list-item", children: [
+              /* @__PURE__ */ jsxRuntime.jsx("span", { style: { maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis" }, children: mol.name || `Molecule ${idx + 1}` }),
+              /* @__PURE__ */ jsxRuntime.jsx(
+                "button",
+                {
+                  className: "delete-molecule-btn",
+                  onClick: () => onDeleteMolecule(idx),
+                  title: "Delete this molecule",
+                  children: "Delete"
+                }
+              )
+            ] }, idx))
+          ] }),
+          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "elementColors", ref: elementColorRef, className: "side-panel" }),
+          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "bondLabels", ref: bondLabelRef, className: "side-panel" }),
+          /* @__PURE__ */ jsxRuntime.jsx("div", { id: "atomLabels", ref: atomLabelRef, className: "side-panel" })
         ]
       }
     ) }),
@@ -1146,10 +1194,14 @@ function parseMol(molData) {
   }
   return { atoms, bonds };
 }
-function parseSdf(sdfData) {
+function parseSdf(sdfData, fileName) {
   const chunks = sdfData.split("$$$$\n").filter((mol) => mol.trim());
-  if (chunks.length === 0) return [{ atoms: [], bonds: [] }];
-  return chunks.map((mol) => parseMol(mol));
+  if (chunks.length === 0) return [{ atoms: [], bonds: [], name: fileName }];
+  return chunks.map((mol, idx) => {
+    const parsed = parseMol(mol);
+    parsed.name = chunks.length > 1 ? `Molecule ${idx + 1}` : fileName;
+    return parsed;
+  });
 }
 function parseXyz(xyzData) {
   const lines = xyzData.split("\n").filter((line) => line.trim() !== "");
@@ -1206,54 +1258,70 @@ function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 
   scene.add(cloud);
   window.densityCloud = cloud;
 }
-const FileParser = ({ file, onParsed }) => {
+const FileParser = ({ files, onParsed }) => {
   react.useEffect(() => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      let newMolecules = [];
-      if (file.name.endsWith(".mol")) {
-        newMolecules = [parseMol(content)];
-      } else if (file.name.endsWith(".sdf")) {
-        newMolecules = parseSdf(content);
-      } else if (file.name.endsWith(".xyz")) {
-        newMolecules = [parseXyz(content)];
-      } else if (file.name.endsWith(".cub")) {
-        const parsed = parseCub(content);
-        const { atoms, bonds, densityData, dimensions } = parsed;
-        newMolecules = [{
-          atoms,
-          bonds,
-          name: file.name,
-          source: "file",
-          visible: true,
-          labelsVisible: false
-        }];
-        setTimeout(() => {
-          renderDensityCloud(densityData, dimensions);
-        }, 500);
-      } else {
-        console.error("Unsupported file type:", file.name);
-        return;
-      }
-      newMolecules.forEach((mol) => {
-        mol.source = "file";
-        mol.visible = mol.visible ?? true;
-        mol.labelsVisible = mol.labelsVisible ?? false;
-      });
-      onParsed(newMolecules);
-    };
-    reader.readAsText(file);
-  }, [file, onParsed]);
+    if (!files || files.length === 0) return;
+    let loadedCount = 0;
+    const allMolecules = [];
+    const offsetStep = 6;
+    files.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        let newMolecules = [];
+        if (file.name.endsWith(".mol")) {
+          const mol = parseMol(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith(".sdf")) {
+          newMolecules = parseSdf(content, file.name);
+        } else if (file.name.endsWith(".xyz")) {
+          const mol = parseXyz(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith(".cub")) {
+          const parsed = parseCub(content);
+          const { atoms, bonds, densityData, dimensions } = parsed;
+          newMolecules = [{
+            atoms,
+            bonds,
+            name: file.name,
+            source: "file",
+            visible: true,
+            labelsVisible: false
+          }];
+          setTimeout(() => {
+            renderDensityCloud(densityData, dimensions);
+          }, 500);
+        } else {
+          console.error("Unsupported file type:", file.name);
+          loadedCount++;
+          if (loadedCount === files.length) onParsed(allMolecules);
+          return;
+        }
+        newMolecules.forEach((mol) => {
+          mol.atoms.forEach((atom) => {
+            atom.x += idx * offsetStep;
+          });
+          mol.source = "file";
+          mol.visible = mol.visible ?? true;
+          mol.labelsVisible = mol.labelsVisible ?? false;
+          allMolecules.push(mol);
+        });
+        loadedCount++;
+        if (loadedCount === files.length) onParsed(allMolecules);
+      };
+      reader.readAsText(file);
+    });
+  }, [files, onParsed]);
   return null;
 };
-const UploadButton = ({ setFile }) => {
+const UploadButton = ({ setFiles }) => {
   const fileInputRef = react.useRef(null);
   const handleFileUpload = (event) => {
-    const selectedFile = event.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile);
+    const selectedFiles = Array.from(event.target.files);
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles);
     }
   };
   return /* @__PURE__ */ jsxRuntime.jsx("div", { children: /* @__PURE__ */ jsxRuntime.jsx(
@@ -1262,7 +1330,8 @@ const UploadButton = ({ setFile }) => {
       type: "file",
       ref: fileInputRef,
       onChange: handleFileUpload,
-      accept: ".mol,.sdf,.xyz,.cub"
+      accept: ".mol,.sdf,.xyz,.cub",
+      multiple: true
     }
   ) });
 };
