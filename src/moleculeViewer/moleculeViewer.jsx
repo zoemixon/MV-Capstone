@@ -9,7 +9,7 @@ const CPK_COLORS = {
   default: '#B0B0B0'
 };
 
-const MoleculeViewer = ({ molecules }) => {
+const MoleculeViewer = ({ molecules, onSceneReady }) => {
   const containerRef = useRef();
   const labelContainerRef = useRef();
   const atomLabelRef = useRef();
@@ -27,6 +27,8 @@ const MoleculeViewer = ({ molecules }) => {
   };
 
   useEffect(() => {
+    if (onSceneReady) onSceneReady(scene);
+
     let camera, renderer, labelRenderer, controls, labelControls;
     let previouslySelectedAtom = null;
     let previouslySelectedUI = null;
@@ -324,7 +326,7 @@ const MoleculeViewer = ({ molecules }) => {
     return () => {
       renderer.domElement.removeEventListener('dblclick', onAtomDoubleClick);
     };
-  }, [molecules]);
+  }, [molecules, onSceneReady]);
 
   useEffect(() => {
     if (!scene) return;
