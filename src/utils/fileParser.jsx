@@ -6,8 +6,9 @@ import { parseCub } from './cubParser';
 import { renderDensityCloud } from './cubView';
 
 const FileParser = ({ file, onParsed, scene }) => {
+
   useEffect(() => {
-    if (!file) return;
+    if (!files || files.length === 0) return;
 
     const reader = new FileReader();
 
