@@ -1,4 +1,4 @@
-import { getElementSymbol } from './atomicSymbol';
+import { getElementSymbol } from './utils/atomicSymbol';
 
 export function parseCub(cubData) {
   const lines = cubData.split('\n');
@@ -81,3 +81,5 @@ export function parseCub(cubData) {
     dimensions: { nx, ny, nz, origin, voxelSize }
   };
 }
+
+import { parseCub } from './utils/cubParser';

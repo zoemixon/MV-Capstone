@@ -777,9 +777,7 @@ const CPK_COLORS = {
   F: "#90E050",
   default: "#B0B0B0"
 };
-
-const MoleculeViewer = ({ molecules, onSceneReady }) => {
-  
+const MoleculeViewer = ({ molecules, onDeleteMolecule }) => {
   const containerRef = react.useRef();
   const labelContainerRef = react.useRef();
   const atomLabelRef = react.useRef();
@@ -806,8 +804,7 @@ const MoleculeViewer = ({ molecules, onSceneReady }) => {
     if (bondLabelRef.current) bondLabelRef.current.innerHTML = "";
   };
   react.useEffect(() => {
-
-    if (onSceneReady) onSceneReady(scene);
+    cleanupSceneAndPanels();
     let camera, renderer, labelRenderer, controls, labelControls;
     const raycaster = new THREE__namespace.Raycaster();
     const mouse = new THREE__namespace.Vector2();
@@ -1062,7 +1059,7 @@ const MoleculeViewer = ({ molecules, onSceneReady }) => {
     return () => {
       renderer.domElement.removeEventListener("dblclick", onAtomDoubleClick);
     };
-  }, [molecules, onSceneReady]);
+  }, [molecules]);
   react.useEffect(() => {
     if (!scene) return;
     allMeshesRef.current.forEach(({ labels }) => {
@@ -1222,200 +1219,6 @@ function parseXyz(xyzData) {
   }
   return { atoms, bonds: [] };
 }
-function getElementSymbol(atomicNumber) {
-  const symbols = [
-    "",
-    "H",
-    "He",
-    "Li",
-    "Be",
-    "B",
-    "C",
-    "N",
-    "O",
-    "F",
-    "Ne",
-    "Na",
-    "Mg",
-    "Al",
-    "Si",
-    "P",
-    "S",
-    "Cl",
-    "Ar",
-    "K",
-    "Ca",
-    "Sc",
-    "Ti",
-    "V",
-    "Cr",
-    "Mn",
-    "Fe",
-    "Co",
-    "Ni",
-    "Cu",
-    "Zn",
-    "Ga",
-    "Ge",
-    "As",
-    "Se",
-    "Br",
-    "Kr",
-    "Rb",
-    "Sr",
-    "Y",
-    "Zr",
-    "Nb",
-    "Mo",
-    "Tc",
-    "Ru",
-    "Rh",
-    "Pd",
-    "Ag",
-    "Cd",
-    "In",
-    "Sn",
-    "Sb",
-    "Te",
-    "I",
-    "Xe",
-    "Cs",
-    "Ba",
-    "La",
-    "Ce",
-    "Pr",
-    "Nd",
-    "Pm",
-    "Sm",
-    "Eu",
-    "Gd",
-    "Tb",
-    "Dy",
-    "Ho",
-    "Er",
-    "Tm",
-    "Yb",
-    "Lu",
-    "Hf",
-    "Ta",
-    "W",
-    "Re",
-    "Os",
-    "Ir",
-    "Pt",
-    "Au",
-    "Hg",
-    "Tl",
-    "Pb",
-    "Bi",
-    "Po",
-    "At",
-    "Rn",
-    "Fr",
-    "Ra",
-    "Ac",
-    "Th",
-    "Pa",
-    "U",
-    "Np",
-    "Pu",
-    "Am",
-    "Cm",
-    "Bk",
-    "Cf",
-    "Es",
-    "Fm",
-    "Md",
-    "No",
-    "Lr",
-    "Rf",
-    "Db",
-    "Sg",
-    "Bh",
-    "Hs",
-    "Mt",
-    "Ds",
-    "Rg",
-    "Cn",
-    "Fl",
-    "Lv",
-    "Ts",
-    "Og"
-  ];
-  return symbols[atomicNumber] || "?";
-}
-function parseCub(cubData) {
-  const lines = cubData.split("\n");
-  if (lines.length < 6) return { atoms: [], bonds: [], densityData: [], dimensions: {} };
-  const atomCountLine = lines[2].trim().split(/\s+/);
-  const atomCount = Math.abs(parseInt(atomCountLine[0]));
-  const origin = {
-    x: parseFloat(atomCountLine[1]),
-    y: parseFloat(atomCountLine[2]),
-    z: parseFloat(atomCountLine[3])
-  };
-  const voxelX = lines[3].trim().split(/\s+/);
-  const voxelY = lines[4].trim().split(/\s+/);
-  const voxelZ = lines[5].trim().split(/\s+/);
-  const nx = parseInt(voxelX[0]);
-  const ny = parseInt(voxelY[0]);
-  const nz = parseInt(voxelZ[0]);
-  const voxelSize = {
-    x: parseFloat(voxelX[1]),
-    y: parseFloat(voxelY[2]),
-    z: parseFloat(voxelZ[3])
-  };
-  const atoms = [];
-  let lineIndex = 6;
-  for (let i = 0; i < atomCount; i++) {
-    const parts = lines[lineIndex++].trim().split(/\s+/);
-    if (parts.length < 5) continue;
-    const atomicNumber = parseInt(parts[0]);
-    const x = parseFloat(parts[2]);
-    const y = parseFloat(parts[3]);
-    const z = parseFloat(parts[4]);
-    atoms.push({ x, y, z, elem: getElementSymbol(atomicNumber) });
-  }
-  const rawValues = [];
-  while (lineIndex < lines.length) {
-    const nums = lines[lineIndex++].trim().split(/\s+/);
-    nums.forEach((n) => {
-      const v = parseFloat(n);
-      if (!isNaN(v)) rawValues.push(v);
-    });
-  }
-  const densityData = Array.from(
-    { length: nx },
-    () => Array.from({ length: ny }, () => Array(nz).fill(0))
-  );
-  let idx = 0;
-  for (let ix = 0; ix < nx; ix++) {
-    for (let iy = 0; iy < ny; iy++) {
-      for (let iz = 0; iz < nz; iz++) {
-        densityData[ix][iy][iz] = rawValues[idx++];
-      }
-    }
-  }
-  const bonds = [];
-  const bondThresholdSq = 3 * 3;
-  for (let i = 0; i < atoms.length; i++) {
-    for (let j = i + 1; j < atoms.length; j++) {
-      const dx = atoms[i].x - atoms[j].x;
-      const dy = atoms[i].y - atoms[j].y;
-      const dz = atoms[i].z - atoms[j].z;
-      const distSq = dx * dx + dy * dy + dz * dz;
-      if (distSq < bondThresholdSq) {
-        bonds.push({ startIdx: i, endIdx: j });
-      }
-    }
-  }
-  return {
-    atoms,
-    bonds,
-    densityData,
-    dimensions: { nx, ny, nz, origin, voxelSize }
-  };
-}
 function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 1e-3, negativeThreshold = 1e-3) {
   if (window.densityCloud) {
     scene.remove(window.densityCloud);
@@ -1455,52 +1258,62 @@ function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 
   scene.add(cloud);
   window.densityCloud = cloud;
 }
-
-const FileParser = ({ file, onParsed, scene }) => {
+const FileParser = ({ files, onParsed }) => {
   react.useEffect(() => {
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target.result;
-      let newMolecules = [];
-      if (file.name.endsWith(".mol")) {
-        newMolecules = [parseMol(content)];
-      } else if (file.name.endsWith(".sdf")) {
-        newMolecules = parseSdf(content);
-      } else if (file.name.endsWith(".xyz")) {
-        newMolecules = [parseXyz(content)];
-      } else if (file.name.endsWith(".cub") || file.name.endsWith(".cube")) {
-        const parsed = parseCub(content);
-        const { atoms, bonds, densityData, dimensions } = parsed;
-        newMolecules = [{
-          atoms,
-          bonds,
-          name: file.name,
-          source: "file",
-          visible: true,
-          labelsVisible: false
-        }];
-        setTimeout(() => {
-          if (scene) {
-            renderDensityCloud(scene, densityData, dimensions);
-            console.log("Density cloud rendered for", file.name);
-          } else {
-            console.warn("Scene not available for density rendering");
-          }
-        }, 500);
-      } else {
-        console.error("Unsupported file type:", file.name);
-        return;
-      }
-      newMolecules.forEach((mol) => {
-        mol.source = "file";
-        mol.visible = mol.visible ?? true;
-        mol.labelsVisible = mol.labelsVisible ?? false;
-      });
-      onParsed(newMolecules);
-    };
-    reader.readAsText(file);
-  }, [file, onParsed, scene]);
+    if (!files || files.length === 0) return;
+    let loadedCount = 0;
+    const allMolecules = [];
+    const offsetStep = 6;
+    files.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        let newMolecules = [];
+        if (file.name.endsWith(".mol")) {
+          const mol = parseMol(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith(".sdf")) {
+          newMolecules = parseSdf(content, file.name);
+        } else if (file.name.endsWith(".xyz")) {
+          const mol = parseXyz(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith(".cub")) {
+          const parsed = parseCub(content);
+          const { atoms, bonds, densityData, dimensions } = parsed;
+          newMolecules = [{
+            atoms,
+            bonds,
+            name: file.name,
+            source: "file",
+            visible: true,
+            labelsVisible: false
+          }];
+          setTimeout(() => {
+            renderDensityCloud(densityData, dimensions);
+          }, 500);
+        } else {
+          console.error("Unsupported file type:", file.name);
+          loadedCount++;
+          if (loadedCount === files.length) onParsed(allMolecules);
+          return;
+        }
+        newMolecules.forEach((mol) => {
+          mol.atoms.forEach((atom) => {
+            atom.x += idx * offsetStep;
+          });
+          mol.source = "file";
+          mol.visible = mol.visible ?? true;
+          mol.labelsVisible = mol.labelsVisible ?? false;
+          allMolecules.push(mol);
+        });
+        loadedCount++;
+        if (loadedCount === files.length) onParsed(allMolecules);
+      };
+      reader.readAsText(file);
+    });
+  }, [files, onParsed]);
   return null;
 };
 const UploadButton = ({ setFiles }) => {
