@@ -2,11 +2,11 @@ import React, { useEffect } from 'react';
 import { parseMol } from './molParser';
 import { parseSdf } from './sdfParser';
 import { parseXyz } from './xyzParser';
-// import { parseCub } from './cubParser';
+import { parseCub } from './cubParser';
 import { renderDensityCloud } from './cubView';
 
 // Accepts an array of files, parses each, and applies a spatial offset to each molecule
-const FileParser = ({ files, onParsed }) => {
+const FileParser = ({ files, onParsed, scene }) => {
   useEffect(() => {
     if (!files || files.length === 0) return;
 
@@ -14,6 +14,7 @@ const FileParser = ({ files, onParsed }) => {
     const allMolecules = [];
     const offsetStep = 6; // Distance to offset each molecule
 
+    
     files.forEach((file, idx) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -64,7 +65,7 @@ const FileParser = ({ files, onParsed }) => {
       };
       reader.readAsText(file);
     });
-  }, [files, onParsed]);
+  }, [files, onParsed, scene]);
 
   return null;
 };
