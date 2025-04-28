@@ -9,9 +9,7 @@ const CPK_COLORS = {
   default: '#B0B0B0'
 };
 
-
-const MoleculeViewer = ({ molecules, onSceneReady }) => {
-
+const MoleculeViewer = ({ molecules, onDeleteMolecule }) => {
   const containerRef = useRef();
   const labelContainerRef = useRef();
   const atomLabelRef = useRef();
@@ -44,9 +42,7 @@ const MoleculeViewer = ({ molecules, onSceneReady }) => {
   };
 
   useEffect(() => {
-
-    if (onSceneReady) onSceneReady(scene);
-
+    cleanupSceneAndPanels();
     let camera, renderer, labelRenderer, controls, labelControls;
     let previouslySelectedUI = null;
     const raycaster = new THREE.Raycaster();
@@ -349,7 +345,7 @@ const MoleculeViewer = ({ molecules, onSceneReady }) => {
     return () => {
       renderer.domElement.removeEventListener('dblclick', onAtomDoubleClick);
     };
-  }, [molecules, onSceneReady]);
+  }, [molecules]);
 
   useEffect(() => {
     if (!scene) return;
