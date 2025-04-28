@@ -1,12 +1,12 @@
 import React, { useRef } from 'react';
 
-const UploadButton = ({ setFile }) => {
+const UploadButton = ({ setFiles }) => {
   const fileInputRef = useRef(null);
 
   const handleFileUpload = (event) => {
-    const selectedFile = event.target.files[0];
-    if (selectedFile) {
-      setFile(selectedFile); 
+    const selectedFiles = Array.from(event.target.files);
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles);
     }
   };
 
@@ -17,6 +17,7 @@ const UploadButton = ({ setFile }) => {
         ref={fileInputRef}
         onChange={handleFileUpload}
         accept=".mol,.sdf,.xyz,.cub"
+        multiple
       />
     </div>
   );

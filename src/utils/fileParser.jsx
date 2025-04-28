@@ -5,26 +5,33 @@ import { parseXyz } from './xyzParser';
 // import { parseCub } from './cubParser';
 import { renderDensityCloud } from './cubView';
 
-const FileParser = ({ file, onParsed }) => {
+// Accepts an array of files, parses each, and applies a spatial offset to each molecule
+const FileParser = ({ files, onParsed }) => {
   useEffect(() => {
-    if (!file) return;
+    if (!files || files.length === 0) return;
 
-    const reader = new FileReader();
+    let loadedCount = 0;
+    const allMolecules = [];
+    const offsetStep = 6; // Distance to offset each molecule
 
-    reader.onload = (e) => {
-      const content = e.target.result;
-      let newMolecules = [];
-
-      if (file.name.endsWith('.mol')) {
-        newMolecules = [parseMol(content)];
-      } else if (file.name.endsWith('.sdf')) {
-        newMolecules = parseSdf(content);
-      } else if (file.name.endsWith('.xyz')) {
-        newMolecules = [parseXyz(content)];
-      } else if (file.name.endsWith('.cub')) {
-        const parsed = parseCub(content);
-        const { atoms, bonds, densityData, dimensions } = parsed;
-
+    files.forEach((file, idx) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target.result;
+        let newMolecules = [];
+        if (file.name.endsWith('.mol')) {
+          const mol = parseMol(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith('.sdf')) {
+          newMolecules = parseSdf(content, file.name);
+        } else if (file.name.endsWith('.xyz')) {
+          const mol = parseXyz(content);
+          mol.name = file.name;
+          newMolecules = [mol];
+        } else if (file.name.endsWith('.cub')) {
+          const parsed = parseCub(content);
+          const { atoms, bonds, densityData, dimensions } = parsed;
           newMolecules = [{
             atoms,
             bonds,
@@ -33,25 +40,31 @@ const FileParser = ({ file, onParsed }) => {
             visible: true,
             labelsVisible: false,
           }];
-
           setTimeout(() => {
             renderDensityCloud(densityData, dimensions);
           }, 500);
         } else {
           console.error('Unsupported file type:', file.name);
+          loadedCount++;
+          if (loadedCount === files.length) onParsed(allMolecules);
           return;
         }
-
+        // Offset each molecule in X direction
         newMolecules.forEach((mol) => {
+          mol.atoms.forEach(atom => {
+            atom.x += idx * offsetStep;
+          });
           mol.source = 'file';
           mol.visible = mol.visible ?? true;
           mol.labelsVisible = mol.labelsVisible ?? false;
+          allMolecules.push(mol);
         });
-
-        onParsed(newMolecules);
-    };
-    reader.readAsText(file);
-  }, [file, onParsed]);
+        loadedCount++;
+        if (loadedCount === files.length) onParsed(allMolecules);
+      };
+      reader.readAsText(file);
+    });
+  }, [files, onParsed]);
 
   return null;
 };
