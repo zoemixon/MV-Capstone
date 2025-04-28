@@ -771,6 +771,7 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   const [scene, setScene] = useState(new THREE.Scene());
   const [selected, setSelected] = useState({ moleculeIdx: null, atomIdx: null });
   const [areLabelsVisible, setLabelsVisible] = useState(true);
+  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
   const toggleLabels = () => {
     setLabelsVisible(!areLabelsVisible);
   };
@@ -796,6 +797,7 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     animate();
     function init() {
       scene.clear();
+      scene.background = new THREE.Color(backgroundColor);
       const ambientLight = new THREE.AmbientLight(4210752, 1.5);
       scene.add(ambientLight);
       const directionalLight = new THREE.DirectionalLight(16777215, 1);
@@ -1055,6 +1057,11 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
       });
     });
   }, [areLabelsVisible, scene]);
+  useEffect(() => {
+    if (scene) {
+      scene.background = new THREE.Color(backgroundColor);
+    }
+  }, [backgroundColor, scene]);
   return /* @__PURE__ */ jsxs("div", { children: [
     /* @__PURE__ */ jsx("style", { children: `
         .selected-atom {
@@ -1137,6 +1144,18 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     ) }),
     /* @__PURE__ */ jsxs("div", { style: { margin: "auto" }, children: [
       /* @__PURE__ */ jsx("button", { onClick: toggleLabels, style: { marginBottom: "10px" }, children: areLabelsVisible ? "Hide Labels" : "Show Labels" }),
+      /* @__PURE__ */ jsx("div", { style: { margin: "10px 0" }, children: /* @__PURE__ */ jsxs("label", { children: [
+        "Background Color:",
+        /* @__PURE__ */ jsx(
+          "input",
+          {
+            type: "color",
+            value: backgroundColor,
+            onChange: (e) => setBackgroundColor(e.target.value),
+            style: { marginLeft: "8px" }
+          }
+        )
+      ] }) }),
       /* @__PURE__ */ jsx("div", { ref: labelContainerRef, style: { position: "absolute" } }),
       /* @__PURE__ */ jsx(
         "div",

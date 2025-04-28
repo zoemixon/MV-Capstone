@@ -789,6 +789,7 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   const [scene, setScene] = react.useState(new THREE__namespace.Scene());
   const [selected, setSelected] = react.useState({ moleculeIdx: null, atomIdx: null });
   const [areLabelsVisible, setLabelsVisible] = react.useState(true);
+  const [backgroundColor, setBackgroundColor] = react.useState("#ffffff");
   const toggleLabels = () => {
     setLabelsVisible(!areLabelsVisible);
   };
@@ -814,6 +815,7 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     animate();
     function init() {
       scene.clear();
+      scene.background = new THREE__namespace.Color(backgroundColor);
       const ambientLight = new THREE__namespace.AmbientLight(4210752, 1.5);
       scene.add(ambientLight);
       const directionalLight = new THREE__namespace.DirectionalLight(16777215, 1);
@@ -1073,6 +1075,11 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
       });
     });
   }, [areLabelsVisible, scene]);
+  react.useEffect(() => {
+    if (scene) {
+      scene.background = new THREE__namespace.Color(backgroundColor);
+    }
+  }, [backgroundColor, scene]);
   return /* @__PURE__ */ jsxRuntime.jsxs("div", { children: [
     /* @__PURE__ */ jsxRuntime.jsx("style", { children: `
         .selected-atom {
@@ -1155,6 +1162,18 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     ) }),
     /* @__PURE__ */ jsxRuntime.jsxs("div", { style: { margin: "auto" }, children: [
       /* @__PURE__ */ jsxRuntime.jsx("button", { onClick: toggleLabels, style: { marginBottom: "10px" }, children: areLabelsVisible ? "Hide Labels" : "Show Labels" }),
+      /* @__PURE__ */ jsxRuntime.jsx("div", { style: { margin: "10px 0" }, children: /* @__PURE__ */ jsxRuntime.jsxs("label", { children: [
+        "Background Color:",
+        /* @__PURE__ */ jsxRuntime.jsx(
+          "input",
+          {
+            type: "color",
+            value: backgroundColor,
+            onChange: (e) => setBackgroundColor(e.target.value),
+            style: { marginLeft: "8px" }
+          }
+        )
+      ] }) }),
       /* @__PURE__ */ jsxRuntime.jsx("div", { ref: labelContainerRef, style: { position: "absolute" } }),
       /* @__PURE__ */ jsxRuntime.jsx(
         "div",

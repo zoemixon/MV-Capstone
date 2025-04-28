@@ -25,6 +25,8 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
 
   const [areLabelsVisible, setLabelsVisible] = useState(true);
 
+  const [backgroundColor, setBackgroundColor] = useState('#ffffff'); // Default white
+
   const toggleLabels = () => {
     setLabelsVisible(!areLabelsVisible);
   };
@@ -58,6 +60,8 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
 
     function init() {
       scene.clear();
+
+      scene.background = new THREE.Color(backgroundColor);
 
       const ambientLight = new THREE.AmbientLight(0x404040, 1.5); // soft ambient light
       scene.add(ambientLight);
@@ -364,6 +368,12 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     });
   }, [areLabelsVisible, scene]);
 
+  useEffect(() => {
+    if (scene) {
+      scene.background = new THREE.Color(backgroundColor);
+    }
+  }, [backgroundColor, scene])
+
   return (
     <div>
       <style>{`
@@ -449,6 +459,17 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
         <button onClick={toggleLabels} style={{ marginBottom: '10px' }}>
           {areLabelsVisible ? 'Hide Labels' : 'Show Labels'}
         </button>
+        <div style={{ margin: '10px 0' }}>
+          <label>
+            Background Color: 
+            <input
+              type="color"
+              value={backgroundColor}
+              onChange={(e) => setBackgroundColor(e.target.value)}
+              style={{ marginLeft: '8px' }}
+            />
+          </label>
+        </div>
         <div ref={labelContainerRef} style={{position: 'absolute'}} />
         <div
           id="viewer"
