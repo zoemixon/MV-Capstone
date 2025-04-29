@@ -14,7 +14,6 @@ const FileParser = ({ files, onParsed, scene }) => {
     const allMolecules = [];
     const offsetStep = 6; // Distance to offset each molecule
 
-    
     files.forEach((file, idx) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -41,8 +40,9 @@ const FileParser = ({ files, onParsed, scene }) => {
             visible: true,
             labelsVisible: false,
           }];
+          // Pass scene to renderDensityCloud
           setTimeout(() => {
-            renderDensityCloud(densityData, dimensions);
+            if (scene) renderDensityCloud(scene, densityData, dimensions);
           }, 500);
         } else {
           console.error('Unsupported file type:', file.name);

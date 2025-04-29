@@ -16,6 +16,12 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   const elementColorRef = useRef();
   const bondLabelRef = useRef();
 
+  const densityCloudContainerRef = useRef();
+  const densityCloudRendererRef = useRef();
+  const densityCloudSceneRef = useRef();
+  const densityCloudCameraRef = useRef();
+  const densityCloudObjectRef = useRef();
+
   const allMeshesRef = useRef([]);
   const previouslySelectedAtomRef = useRef(null);
   const previouslySelectedUIRef = useRef(null);
@@ -54,6 +60,42 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     const mouse = new THREE.Vector2();
 
     allMeshesRef.current = [];
+
+    // Add density cloud overlay canvas
+    if (!densityCloudContainerRef.current) {
+      const overlay = document.createElement('div');
+      overlay.style.position = 'absolute';
+      overlay.style.top = '0';
+      overlay.style.left = '0';
+      overlay.style.width = '100%';
+      overlay.style.height = '100%';
+      overlay.style.pointerEvents = 'none';
+      overlay.style.zIndex = 10;
+      overlay.id = 'density-cloud-overlay';
+      containerRef.current.parentElement.appendChild(overlay);
+      densityCloudContainerRef.current = overlay;
+    }
+    // Setup density cloud renderer
+    if (!densityCloudRendererRef.current) {
+      const renderer = new THREE.WebGLRenderer({ alpha: true });
+      renderer.setClearColor(0x000000, 0); // transparent
+      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      densityCloudContainerRef.current.appendChild(renderer.domElement);
+      densityCloudRendererRef.current = renderer;
+    }
+    // Setup density cloud scene and camera
+    if (!densityCloudSceneRef.current) {
+      densityCloudSceneRef.current = new THREE.Scene();
+    }
+    if (!densityCloudCameraRef.current) {
+      densityCloudCameraRef.current = new THREE.PerspectiveCamera(
+        75,
+        containerRef.current.clientWidth / containerRef.current.clientHeight,
+        0.1,
+        1000
+      );
+      densityCloudCameraRef.current.position.z = 10;
+    }
 
     init();
     animate();
@@ -347,6 +389,20 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
         atomMeshes.forEach((mesh, i) => labels[i].position.copy(mesh.position));
         bondMeshes.forEach((mesh, j) => labels[j + atomMeshes.length].position.copy(mesh.position));
       });
+
+      // Render density cloud overlay if present
+      if (densityCloudObjectRef.current) {
+        // Sync camera
+        densityCloudCameraRef.current.position.copy(camera.position);
+        densityCloudCameraRef.current.rotation.copy(camera.rotation);
+        densityCloudCameraRef.current.fov = camera.fov;
+        densityCloudCameraRef.current.aspect = camera.aspect;
+        densityCloudCameraRef.current.updateProjectionMatrix();
+        densityCloudRendererRef.current.render(
+          densityCloudSceneRef.current,
+          densityCloudCameraRef.current
+        );
+      }
     }
 
     return () => {
@@ -370,9 +426,25 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
 
   useEffect(() => {
     if (scene) {
-      scene.background = new THREE.Color(backgroundColor);
+      // Check if density cloud is present and background is white
+      const isWhite = backgroundColor.toLowerCase() === '#fff' || backgroundColor.toLowerCase() === '#ffffff';
+      const hasDensityCloud = typeof window !== 'undefined' && window.densityCloud && window.densityCloud.visible;
+      if (hasDensityCloud && isWhite) {
+        scene.background = new THREE.Color('#000000'); // Use black for density cloud visibility
+      } else {
+        scene.background = new THREE.Color(backgroundColor);
+      }
     }
-  }, [backgroundColor, scene])
+  }, [backgroundColor, scene]);
+
+  // Helper to add density cloud to overlay scene
+  const addDensityCloud = (pointsObject) => {
+    if (densityCloudObjectRef.current) {
+      densityCloudSceneRef.current.remove(densityCloudObjectRef.current);
+    }
+    densityCloudObjectRef.current = pointsObject;
+    densityCloudSceneRef.current.add(pointsObject);
+  };
 
   return (
     <div>
@@ -482,6 +554,8 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
           }}
         >
         </div>
+        {/* Overlay for density cloud */}
+        <div ref={densityCloudContainerRef} style={{ position: 'absolute', top: 0, left: 0, width: '1100px', height: '600px', pointerEvents: 'none', zIndex: 20 }} />
       </div>
     </div>
   );
