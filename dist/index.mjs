@@ -765,6 +765,11 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   const atomLabelRef = useRef();
   const elementColorRef = useRef();
   const bondLabelRef = useRef();
+  const densityCloudContainerRef = useRef();
+  const densityCloudRendererRef = useRef();
+  const densityCloudSceneRef = useRef();
+  const densityCloudCameraRef = useRef();
+  const densityCloudObjectRef = useRef();
   const allMeshesRef = useRef([]);
   const previouslySelectedAtomRef = useRef(null);
   const previouslySelectedUIRef = useRef(null);
@@ -793,6 +798,38 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     allMeshesRef.current = [];
+    if (!densityCloudContainerRef.current) {
+      const overlay = document.createElement("div");
+      overlay.style.position = "absolute";
+      overlay.style.top = "0";
+      overlay.style.left = "0";
+      overlay.style.width = "100%";
+      overlay.style.height = "100%";
+      overlay.style.pointerEvents = "none";
+      overlay.style.zIndex = 10;
+      overlay.id = "density-cloud-overlay";
+      containerRef.current.parentElement.appendChild(overlay);
+      densityCloudContainerRef.current = overlay;
+    }
+    if (!densityCloudRendererRef.current) {
+      const renderer2 = new THREE.WebGLRenderer({ alpha: true });
+      renderer2.setClearColor(0, 0);
+      renderer2.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      densityCloudContainerRef.current.appendChild(renderer2.domElement);
+      densityCloudRendererRef.current = renderer2;
+    }
+    if (!densityCloudSceneRef.current) {
+      densityCloudSceneRef.current = new THREE.Scene();
+    }
+    if (!densityCloudCameraRef.current) {
+      densityCloudCameraRef.current = new THREE.PerspectiveCamera(
+        75,
+        containerRef.current.clientWidth / containerRef.current.clientHeight,
+        0.1,
+        1e3
+      );
+      densityCloudCameraRef.current.position.z = 10;
+    }
     init();
     animate();
     function init() {
@@ -1040,6 +1077,17 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
         atomMeshes.forEach((mesh, i) => labels[i].position.copy(mesh.position));
         bondMeshes.forEach((mesh, j) => labels[j + atomMeshes.length].position.copy(mesh.position));
       });
+      if (densityCloudObjectRef.current) {
+        densityCloudCameraRef.current.position.copy(camera.position);
+        densityCloudCameraRef.current.rotation.copy(camera.rotation);
+        densityCloudCameraRef.current.fov = camera.fov;
+        densityCloudCameraRef.current.aspect = camera.aspect;
+        densityCloudCameraRef.current.updateProjectionMatrix();
+        densityCloudRendererRef.current.render(
+          densityCloudSceneRef.current,
+          densityCloudCameraRef.current
+        );
+      }
     }
     return () => {
       renderer.domElement.removeEventListener("dblclick", onAtomDoubleClick);
@@ -1059,7 +1107,13 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   }, [areLabelsVisible, scene]);
   useEffect(() => {
     if (scene) {
-      scene.background = new THREE.Color(backgroundColor);
+      const isWhite = backgroundColor.toLowerCase() === "#fff" || backgroundColor.toLowerCase() === "#ffffff";
+      const hasDensityCloud = typeof window !== "undefined" && window.densityCloud && window.densityCloud.visible;
+      if (hasDensityCloud && isWhite) {
+        scene.background = new THREE.Color("#000000");
+      } else {
+        scene.background = new THREE.Color(backgroundColor);
+      }
     }
   }, [backgroundColor, scene]);
   return /* @__PURE__ */ jsxs("div", { children: [
@@ -1169,7 +1223,8 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
             position: "relative"
           }
         }
-      )
+      ),
+      /* @__PURE__ */ jsx("div", { ref: densityCloudContainerRef, style: { position: "absolute", top: 0, left: 0, width: "1100px", height: "600px", pointerEvents: "none", zIndex: 20 } })
     ] })
   ] });
 };
@@ -1415,7 +1470,11 @@ function parseCub(cubData) {
     dimensions: { nx, ny, nz, origin, voxelSize }
   };
 }
+let currentDensityData = null;
+let currentDimensions = null;
 function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 1e-3, negativeThreshold = 1e-3) {
+  currentDensityData = densityData;
+  currentDimensions = dimensions;
   if (window.densityCloud) {
     scene.remove(window.densityCloud);
     window.densityCloud.geometry.dispose();
@@ -1454,6 +1513,11 @@ function renderDensityCloud(scene, densityData, dimensions, positiveThreshold = 
   scene.add(cloud);
   window.densityCloud = cloud;
 }
+function updateDensityThresholds(scene, positiveThreshold, negativeThreshold) {
+  if (currentDensityData && currentDimensions) {
+    renderDensityCloud(scene, currentDensityData, currentDimensions, positiveThreshold, negativeThreshold);
+  }
+}
 const FileParser = ({ files, onParsed, scene }) => {
   useEffect(() => {
     if (!files || files.length === 0) return;
@@ -1487,7 +1551,7 @@ const FileParser = ({ files, onParsed, scene }) => {
             labelsVisible: false
           }];
           setTimeout(() => {
-            renderDensityCloud(densityData, dimensions);
+            if (scene) renderDensityCloud(scene, densityData, dimensions);
           }, 500);
         } else {
           console.error("Unsupported file type:", file.name);
@@ -1531,7 +1595,61 @@ const UploadButton = ({ setFiles }) => {
     }
   ) });
 };
+const DensityCloudControls = ({ scene }) => {
+  const [currentPositiveThreshold, setCurrentPositiveThreshold] = useState(1e-3);
+  const [currentNegativeThreshold, setCurrentNegativeThreshold] = useState(1e-3);
+  const toggleDensityCloud = () => {
+    if (window.densityCloud) {
+      window.densityCloud.visible = !window.densityCloud.visible;
+    } else {
+      alert("Density cloud has not been loaded yet!");
+    }
+  };
+  useEffect(() => {
+    if (scene) {
+      updateDensityThresholds(scene, currentPositiveThreshold, currentNegativeThreshold);
+    }
+  }, [scene, currentPositiveThreshold, currentNegativeThreshold]);
+  return /* @__PURE__ */ jsxs("div", { className: "label-section", children: [
+    /* @__PURE__ */ jsx("button", { onClick: toggleDensityCloud, children: "Toggle Density Cloud" }),
+    /* @__PURE__ */ jsxs("div", { style: { marginTop: "10px" }, children: [
+      /* @__PURE__ */ jsxs("label", { children: [
+        "Positive Density Threshold: ",
+        currentPositiveThreshold.toFixed(4)
+      ] }),
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "range",
+          min: "0.0001",
+          max: "0.01",
+          step: "0.0001",
+          value: currentPositiveThreshold,
+          onChange: (e) => setCurrentPositiveThreshold(parseFloat(e.target.value))
+        }
+      )
+    ] }),
+    /* @__PURE__ */ jsxs("div", { style: { marginTop: "10px" }, children: [
+      /* @__PURE__ */ jsxs("label", { children: [
+        "Negative Density Threshold: ",
+        currentNegativeThreshold.toFixed(4)
+      ] }),
+      /* @__PURE__ */ jsx(
+        "input",
+        {
+          type: "range",
+          min: "0.0001",
+          max: "0.01",
+          step: "0.0001",
+          value: currentNegativeThreshold,
+          onChange: (e) => setCurrentNegativeThreshold(parseFloat(e.target.value))
+        }
+      )
+    ] })
+  ] });
+};
 export {
+  DensityCloudControls,
   FileParser,
   MoleculeViewer,
   UploadButton

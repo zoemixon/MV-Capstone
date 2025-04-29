@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { updateDensityThresholds } from "./cubView";
 
-const DensityCloudControls = () => {
+const DensityCloudControls = ({ scene }) => {
     const [currentPositiveThreshold, setCurrentPositiveThreshold] = useState(0.001);
     const [currentNegativeThreshold, setCurrentNegativeThreshold] = useState(0.001);
 
@@ -14,8 +14,10 @@ const DensityCloudControls = () => {
     };
 
     useEffect(() => {
-        updateDensityThresholds(currentPositiveThreshold, currentNegativeThreshold);
-    }, [currentPositiveThreshold, currentNegativeThreshold]);
+        if (scene) {
+            updateDensityThresholds(scene, currentPositiveThreshold, currentNegativeThreshold);
+        }
+    }, [scene, currentPositiveThreshold, currentNegativeThreshold]);
 
     return (
         <div className="label-section">
