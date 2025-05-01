@@ -776,7 +776,7 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
   const [scene, setScene] = useState(new THREE.Scene());
   const [selected, setSelected] = useState({ moleculeIdx: null, atomIdx: null });
   const [areLabelsVisible, setLabelsVisible] = useState(true);
-  const [backgroundColor, setBackgroundColor] = useState("#ffffff");
+  const [backgroundColor, setBackgroundColor] = useState("#000000");
   const toggleLabels = () => {
     setLabelsVisible(!areLabelsVisible);
   };
@@ -837,14 +837,11 @@ const MoleculeViewer = ({ molecules, onDeleteMolecule, onSceneReady }) => {
       scene.background = new THREE.Color(backgroundColor);
       const ambientLight = new THREE.AmbientLight(4210752, 1.5);
       scene.add(ambientLight);
-      const directionalLight = new THREE.DirectionalLight(16777215, 1);
-      directionalLight.position.set(5, 10, 7.5);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 1024;
-      directionalLight.shadow.mapSize.height = 1024;
-      scene.add(directionalLight);
       camera = new THREE.PerspectiveCamera(75, containerRef.current.clientWidth / containerRef.current.clientHeight, 0.1, 1e3);
       camera.position.z = 10;
+      scene.add(camera);
+      var light = new THREE.PointLight(16777215, 1);
+      camera.add(light);
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
       containerRef.current.innerHTML = "";
